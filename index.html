@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lyric frame generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --panel: #161616;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #555;
+    --accent: #e8e8e8;
+    --hover: #222;
+  }
+
+  body {
+    font-family: 'DM Mono', 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 300px;
+    min-width: 300px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .sidebar-header p {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+  }
+
+  .sidebar-body {
+    flex: 1;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .field-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .field-label span {
+    color: var(--text);
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px;
+    font-family: 'Arial Narrow', Arial, sans-serif;
+    font-size: 14px;
+    resize: none;
+    line-height: 1.7;
+    border-radius: 3px;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { outline: none; border-color: #444; }
+  textarea::placeholder { color: var(--muted); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    outline: none;
+    margin-top: 8px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+  }
+
+  .color-row {
+    display: flex;
+    gap: 10px;
+  }
+  .color-field {
+    flex: 1;
+  }
+  input[type="color"] {
+    width: 100%;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: none;
+    padding: 2px;
+  }
+
+  select {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: #444; }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    padding: 11px 16px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    transition: all 0.15s;
+    width: 100%;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background: var(--text);
+    color: #000;
+  }
+  .btn-primary:hover { background: #ccc; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { color: var(--text); border-color: #555; }
+  .btn-outline.active { color: var(--text); border-color: #666; }
+  .btn-outline:active { transform: scale(0.98); }
+
+  .status {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    min-height: 14px;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 30px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    box-shadow: 0 0 0 1px var(--border), 0 30px 80px rgba(0,0,0,0.6);
+    border-radius: 2px;
+    overflow: hidden;
+    max-width: calc(100vw - 360px);
+    max-height: calc(100vh - 120px);
+  }
+
+  #preview {
+    display: block;
+    max-width: calc(100vw - 360px);
+    max-height: calc(100vh - 120px);
+    object-fit: contain;
+  }
+
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    transition: all 0.12s;
+  }
+  .nav-btn:hover { color: var(--text); border-color: #555; }
+  .nav-btn:disabled { opacity: 0.25; cursor: default; }
+
+  #frameCounter {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 90px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* progress overlay */
+  .progress-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .progress-overlay.show { display: flex; }
+
+  .progress-bar-track {
+    width: 200px;
+    height: 1px;
+    background: var(--border);
+  }
+  .progress-bar-fill {
+    height: 1px;
+    background: var(--text);
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  /* scrollbar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>lyric frames</h1>
+    <p>one line per frame · frames stack cumulatively · download as PNG zip</p>
+  </div>
+
+  <div class="sidebar-body">
+
+    <div>
+      <div class="field-label">lyrics <span id="lineCount">0 lines</span></div>
+      <textarea id="lyricsInput"
+        placeholder="stack the words like this&#10;or even like this&#10;and add this&#10;effect over them"
+        spellcheck="false"></textarea>
+    </div>
+
+    <div>
+      <div class="field-label">canvas size</div>
+      <select id="canvasSize">
+        <option value="1080x1080">1080 × 1080  —  square</option>
+        <option value="1920x1080">1920 × 1080  —  landscape</option>
+        <option value="1080x1920">1080 × 1920  —  portrait / reel</option>
+        <option value="1280x720">1280 × 720   —  hd video</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="field-label">font size <span id="fontSizeVal">80</span></div>
+      <input type="range" id="fontSize" min="20" max="160" value="80">
+    </div>
+
+    <div>
+      <div class="field-label">blur <span id="blurVal">2.5</span>px</div>
+      <input type="range" id="blur" min="0" max="10" step="0.5" value="2.5">
+    </div>
+
+    <div>
+      <div class="field-label">line height <span id="lineHeightVal">1.25</span></div>
+      <input type="range" id="lineHeight" min="0.8" max="2.5" step="0.05" value="1.25">
+    </div>
+
+    <div>
+      <div class="field-label">margin <span id="paddingVal">48</span>px</div>
+      <input type="range" id="padding" min="0" max="200" value="48">
+    </div>
+
+    <div>
+      <div class="field-label">vertical offset <span id="offsetVal">48</span>px</div>
+      <input type="range" id="offset" min="0" max="400" value="48">
+    </div>
+
+    <div class="color-row">
+      <div class="color-field">
+        <div class="field-label">background</div>
+        <input type="color" id="bgColor" value="#ffffff">
+      </div>
+      <div class="color-field">
+        <div class="field-label">text</div>
+        <input type="color" id="textColor" value="#111111">
+      </div>
+    </div>
+
+    <div>
+      <div class="field-label">font weight</div>
+      <select id="fontWeight">
+        <option value="normal">regular</option>
+        <option value="bold" selected>bold</option>
+      </select>
+    </div>
+
+  </div>
+
+  <div class="sidebar-footer">
+    <button class="btn btn-primary" onclick="generateAndShow()">↻  generate preview</button>
+    <button class="btn btn-outline" id="downloadBtn" onclick="downloadAll()">↓  download all PNGs</button>
+    <div class="status" id="status">–</div>
+  </div>
+</div>
+
+<!-- MAIN PREVIEW -->
+<div class="main">
+  <div class="canvas-wrapper" id="canvasWrapper">
+    <canvas id="preview" width="1080" height="1080"></canvas>
+    <div class="empty-state" id="emptyState">type lyrics · press generate</div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" id="prevBtn" onclick="prevFrame()" disabled>← prev</button>
+    <span id="frameCounter">– / –</span>
+    <button class="nav-btn" id="nextBtn" onclick="nextFrame()" disabled>next →</button>
+  </div>
+</div>
+
+<!-- PROGRESS OVERLAY -->
+<div class="progress-overlay" id="progressOverlay">
+  <div id="progressLabel">building frames…</div>
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let frames = [];      // array of offscreen canvases
+let currentFrame = 0;
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function getSettings() {
+  const [w, h] = document.getElementById('canvasSize').value.split('x').map(Number);
+  return {
+    width:      w,
+    height:     h,
+    fontSize:   parseInt(document.getElementById('fontSize').value),
+    blur:       parseFloat(document.getElementById('blur').value),
+    lineHeight: parseFloat(document.getElementById('lineHeight').value),
+    padding:    parseInt(document.getElementById('padding').value),
+    offset:     parseInt(document.getElementById('offset').value),
+    bgColor:    document.getElementById('bgColor').value,
+    textColor:  document.getElementById('textColor').value,
+    fontWeight: document.getElementById('fontWeight').value,
+  };
+}
+
+function getLyricLines() {
+  const raw = document.getElementById('lyricsInput').value;
+  // Each line (including blank) is a frame; blank lines just show the previous state
+  return raw.split('\n');
+}
+
+/** Draw a single cumulative frame onto ctx. lines = array of strings up to this frame. */
+function drawFrame(ctx, lines, s) {
+  const { width, height, fontSize, blur, lineHeight, padding, offset, bgColor, textColor, fontWeight } = s;
+
+  // Background
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  if (lines.length === 0) return;
+
+  // Font
+  const fontStr = `${fontWeight} ${fontSize}px "Arial Narrow", "Arial", sans-serif`;
+  ctx.font = fontStr;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = textColor;
+
+  const lineH   = fontSize * lineHeight;
+  const availW  = width - 2 * padding;
+  const extraBlurPad = blur * 2; // stop edge clip
+
+  // Apply blur filter once for all text
+  ctx.filter = blur > 0 ? `blur(${blur}px)` : 'none';
+
+  lines.forEach((line, i) => {
+    const y = offset + i * lineH;
+    const trimmed = line.trim();
+    if (!trimmed) return; // blank line = blank frame slot
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+
+    if (words.length === 1) {
+      // Single word: left-aligned
+      ctx.fillText(words[0], padding + extraBlurPad, y);
+      return;
+    }
+
+    // Justified: spread words across full available width
+    const wordWidths = words.map(w => ctx.measureText(w).width);
+    const totalWordW = wordWidths.reduce((a, b) => a + b, 0);
+    const gap = (availW - totalWordW) / (words.length - 1);
+
+    let x = padding;
+    words.forEach((word, j) => {
+      ctx.fillText(word, x, y);
+      x += wordWidths[j] + gap;
+    });
+  });
+
+  ctx.filter = 'none';
+}
+
+// ── GENERATE ───────────────────────────────────────────────────────────────
+async function generateFrames() {
+  const allLines = getLyricLines();
+  const s = getSettings();
+  frames = [];
+
+  for (let i = 0; i < allLines.length; i++) {
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = s.width;
+    offscreen.height = s.height;
+    const ctx = offscreen.getContext('2d');
+    // Cumulative: include lines 0..i
+    drawFrame(ctx, allLines.slice(0, i + 1), s);
+    frames.push(offscreen);
+
+    // Yield to browser to avoid lock
+    if (i % 5 === 0) {
+      const pct = Math.round((i / allLines.length) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  document.getElementById('progressFill').style.width = '100%';
+}
+
+function showCurrentFrame() {
+  const preview = document.getElementById('preview');
+  const emptyState = document.getElementById('emptyState');
+
+  if (frames.length === 0) {
+    emptyState.style.display = 'flex';
+    preview.width = 1080; preview.height = 1080;
+    preview.getContext('2d').clearRect(0, 0, 1080, 1080);
+    document.getElementById('frameCounter').textContent = '– / –';
+    document.getElementById('prevBtn').disabled = true;
+    document.getElementById('nextBtn').disabled = true;
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  const src = frames[currentFrame];
+  preview.width  = src.width;
+  preview.height = src.height;
+  preview.getContext('2d').drawImage(src, 0, 0);
+
+  document.getElementById('frameCounter').textContent =
+    `${currentFrame + 1} / ${frames.length}`;
+  document.getElementById('prevBtn').disabled = currentFrame === 0;
+  document.getElementById('nextBtn').disabled = currentFrame === frames.length - 1;
+}
+
+async function generateAndShow() {
+  const allLines = getLyricLines().filter(l => l !== undefined);
+  if (!allLines.length || allLines.every(l => !l.trim())) {
+    document.getElementById('status').textContent = 'add some lyrics first';
+    return;
+  }
+
+  // Show progress
+  const overlay = document.getElementById('progressOverlay');
+  overlay.classList.add('show');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressLabel').textContent = 'building frames…';
+
+  await generateFrames();
+
+  overlay.classList.remove('show');
+  currentFrame = Math.min(currentFrame, frames.length - 1);
+  showCurrentFrame();
+
+  const n = frames.length;
+  document.getElementById('status').textContent =
+    `${n} frame${n !== 1 ? 's' : ''} ready`;
+}
+
+// ── NAV ────────────────────────────────────────────────────────────────────
+function prevFrame() {
+  if (currentFrame > 0) { currentFrame--; showCurrentFrame(); }
+}
+function nextFrame() {
+  if (currentFrame < frames.length - 1) { currentFrame++; showCurrentFrame(); }
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (document.activeElement === document.getElementById('lyricsInput')) return;
+  if (e.key === 'ArrowLeft')  prevFrame();
+  if (e.key === 'ArrowRight') nextFrame();
+});
+
+// ── DOWNLOAD ───────────────────────────────────────────────────────────────
+async function downloadAll() {
+  if (frames.length === 0) {
+    document.getElementById('status').textContent = 'generate frames first';
+    return;
+  }
+
+  const overlay = document.getElementById('progressOverlay');
+  overlay.classList.add('show');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressLabel').textContent = 'zipping PNGs…';
+
+  const zip = new JSZip();
+  const folder = zip.folder('lyric-frames');
+
+  for (let i = 0; i < frames.length; i++) {
+    const dataUrl = frames[i].toDataURL('image/png');
+    const b64 = dataUrl.split(',')[1];
+    folder.file(`frame-${String(i + 1).padStart(3, '0')}.png`, b64, { base64: true });
+
+    if (i % 3 === 0) {
+      document.getElementById('progressFill').style.width =
+        Math.round((i / frames.length) * 100) + '%';
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('progressLabel').textContent = 'compressing…';
+  await new Promise(r => setTimeout(r, 30));
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'lyric-frames.zip'; a.click();
+  URL.revokeObjectURL(url);
+
+  overlay.classList.remove('show');
+  document.getElementById('status').textContent =
+    `downloaded ${frames.length} PNGs as zip`;
+}
+
+// ── LIVE CONTROLS ──────────────────────────────────────────────────────────
+const sliders = {
+  fontSize:   'fontSizeVal',
+  blur:       'blurVal',
+  lineHeight: 'lineHeightVal',
+  padding:    'paddingVal',
+  offset:     'offsetVal',
+};
+
+Object.entries(sliders).forEach(([id, labelId]) => {
+  document.getElementById(id).addEventListener('input', function() {
+    document.getElementById(labelId).textContent = this.value;
+    liveRedraw();
+  });
+});
+
+// Line count
+document.getElementById('lyricsInput').addEventListener('input', function() {
+  const n = this.value.split('\n').length;
+  document.getElementById('lineCount').textContent = `${n} line${n !== 1 ? 's' : ''}`;
+  liveRedraw();
+});
+
+['bgColor', 'textColor', 'fontWeight', 'canvasSize'].forEach(id => {
+  document.getElementById(id).addEventListener('change', liveRedraw);
+  document.getElementById(id).addEventListener('input', liveRedraw);
+});
+
+// Debounce live redraw
+let redrawTimer = null;
+function liveRedraw() {
+  clearTimeout(redrawTimer);
+  redrawTimer = setTimeout(generateAndShow, 280);
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+// Pre-fill with example
+document.getElementById('lyricsInput').value =
+  `stack the words like this\nor even like this\nand add this\neffect over them`;
+document.getElementById('lineCount').textContent = '4 lines';
+generateAndShow();
+
+</script>
+</body>
+</html>
